@@ -15,7 +15,10 @@
 
 **[ 观看: 1080p 超清全量交互演示视频 ]**
 
-https://github.com/OpenBaud/nanobot-web/raw/master/public/nanobot-web-hq.mp4
+
+https://github.com/user-attachments/assets/3866a15d-24c7-425a-8a9d-d9f1293b000a
+
+
 
 ### 00 // 项目概述
 **Nanobot Web Console** 是一个独立的、无侵入式的 Web 控制面板，适配 **[nanobot](https://github.com/HKUDS/nanobot)** 智能体引擎及各类基于 CLI 驱动的智能系统。它将底层原始的代理能力转化为了可管理的、具备硬件感知的边缘计算设备。
