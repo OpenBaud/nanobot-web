@@ -14,7 +14,8 @@
 ---
 
 
-Uploading nanobot-web-hq.mp4…
+
+https://github.com/user-attachments/assets/6bc09160-68ea-4c05-ab3b-84c4d6766138
 
 
 
