@@ -13,9 +13,10 @@
 
 ---
 
-**[ Watch: High-Fidelity 1080p Interactive Demo ]**
 
-https://github.com/OpenBaud/nanobot-web/raw/master/public/nanobot-web-hq.mp4
+Uploading nanobot-web-hq.mp4…
+
+
 
 ### 00 // OVERVIEW
 **Nanobot Web Console** is a standalone, non-intrusive web-based control surface designed for the **[nanobot](https://github.com/HKUDS/nanobot)** agent engine and other CLI-driven intelligent systems. It transforms raw agentic power into a manageable, hardware-aware edge appliance.
