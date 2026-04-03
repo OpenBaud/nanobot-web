@@ -13,10 +13,9 @@
 
 ---
 
-**[ 观看: 1080p 超清全量交互演示视频 ]**
 
 
-https://github.com/user-attachments/assets/3866a15d-24c7-425a-8a9d-d9f1293b000a
+Uploading nanobot-web-hq.mp4…
 
 
 
