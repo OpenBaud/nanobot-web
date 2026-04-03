@@ -67,15 +67,55 @@ Real-time monitoring of system-level drivers.
 *   **Geometry:** Sharp 90-degree edges (Zero-Radius).
 *   **Palette:** High-contrast monochromatic (Pure Black & White).
 *   **Typography:** Precision-aligned `JetBrains Mono`.
-*   **Geometry:** Mathematically consistent responsive grid.
+*   **Grid System:** Mathematically consistent responsive grid.
 
 ---
 
-### 04 // DEPLOYMENT
+### 04 // ENVIRONMENT & DEPENDENCIES
+
+> **[!IMPORTANT]**
+> To maintain zero-latency telemetry and direct hardware control, **Nanobot Web Console MUST be deployed on the same physical or virtual machine as the nanobot engine.**
+
+**Prerequisites:**
+*   Node.js >= 18.x (for Next.js App Router)
+*   `nanobot` CLI installed and available in the system `PATH`.
+*   A generated configuration directory at `~/.nanobot/` (run `nanobot onboard` once to create it).
+
+---
+
+### 05 // HOW IT WORKS (ZERO-INTRUSION LAYER)
+
+Instead of modifying the core engine, the Web Console acts as a high-privileged local observer:
+*   **Process Supervision**: Directly invokes and tracks `nanobot gateway` via standard OS process commands (`ps`, `kill`, `start`).
+*   **Agent Interaction**: Wraps the `nanobot agent -m "<message>"` command to provide the interactive terminal experience.
+*   **Configuration Injection**: Reads and surgically overwrites `~/.nanobot/config.json` directly from the file system.
+
+---
+
+### 06 // SUPPORTED ECOSYSTEM
+
+Because the Web Console directly parses the core `config.json`, it natively inherits all of nanobot's powerful capabilities:
+
+**🤖 LLM Providers (Multi-Model Routing)**
+Fully supports hot-switching between 20+ models including:
+*   **Global**: OpenAI, Anthropic (Claude), Google Gemini, Groq, Mistral.
+*   **Mainland China**: DeepSeek, Zhipu, Moonshot (Kimi), DashScope, Minimax, Volcengine.
+*   **Local & Edge**: Ollama, vLLM, OpenVINO Model Server (OVMS).
+*   **Developer**: GitHub Copilot, OpenAI Codex.
+
+**💬 Chat Channels (Gateway Integrations)**
+Manage long-lived connections for various platforms directly from the UI:
+*   **Social & IM**: Telegram, Discord, WhatsApp.
+*   **Enterprise**: DingTalk, Feishu, WeCom, Slack, WeChat.
+*   **Protocols**: Email (IMAP/SMTP), Mochat.
+
+---
+
+### 07 // DEPLOYMENT
 ```bash
 # 1. Clone the repository
 git clone https://github.com/OpenBaud/nanobot-web.git
-cd nanobot-web
+cd nanobot-web/web
 
 # 2. Initialize environment
 npm install

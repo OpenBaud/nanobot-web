@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Lock, ArrowRight, Terminal } from "lucide-react";
 import { useLanguage } from "@/lib/LanguageContext";
 
-export function LoginForm({ action }: { action: (formData: FormData) => Promise<any> }) {
+export function LoginForm() {
   const { t } = useLanguage();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -16,10 +16,21 @@ export function LoginForm({ action }: { action: (formData: FormData) => Promise<
     setError(null);
     
     const formData = new FormData(e.currentTarget);
+    const password = formData.get("password") as string;
+    
     try {
-      const res = await action(formData);
-      if (res?.error) {
-        setError(res.error);
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      
+      const res = await response.json();
+      
+      if (!response.ok || res.error) {
+        setError(res.error || t("auth.sys_error") || "INVALID CREDENTIALS");
+      } else {
+        window.location.href = "/";
       }
     } catch (err: any) {
       setError(t("auth.sys_error") || "UNEXPECTED ERROR");

@@ -6,10 +6,9 @@ import { SecurityForm } from "./SecurityForm";
 interface SecurityViewProps {
   isLocked: boolean;
   recoveryEmail: string | null;
-  action: (formData: FormData) => Promise<any>;
 }
 
-export function SecurityView({ isLocked, recoveryEmail, action }: SecurityViewProps) {
+export function SecurityView({ isLocked, recoveryEmail }: SecurityViewProps) {
   const { t } = useLanguage();
 
   return (
@@ -48,7 +47,7 @@ export function SecurityView({ isLocked, recoveryEmail, action }: SecurityViewPr
               </div>
             </div>
           ) : (
-            <SecurityForm action={action} />
+            <SecurityForm />
           )}
         </div>
       </div>

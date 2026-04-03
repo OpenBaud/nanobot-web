@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Terminal, Save } from "lucide-react";
 import { useLanguage } from "@/lib/LanguageContext";
 
-export function SecurityForm({ action }: { action: (formData: FormData) => Promise<any> }) {
+export function SecurityForm() {
   const { t } = useLanguage();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
@@ -17,11 +17,27 @@ export function SecurityForm({ action }: { action: (formData: FormData) => Promi
     setSuccess(false);
     
     const formData = new FormData(e.currentTarget);
+    const password = formData.get("password") as string;
+    const confirm = formData.get("confirm") as string;
+    const email = formData.get("email") as string;
+
+    if (password !== confirm) {
+      setError(t("security.passwords_not_match") || "PASSWORDS DO NOT MATCH");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await action(formData);
-      if (res?.error) {
-        setError(res.error);
-      } else if (res?.success) {
+      const response = await fetch('/api/auth/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, email })
+      });
+      const res = await response.json();
+      
+      if (!response.ok || res.error) {
+        setError(res.error || t("auth.sys_error") || "FAILED TO SECURE SYSTEM");
+      } else {
         setSuccess(true);
         // Refresh page or user is now locked.
         window.location.reload();

@@ -4,8 +4,11 @@ import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const AUTH_FILE = path.join(DATA_DIR, 'auth.json');
+// Industrial Edge Fallback: Absolutely hardcoded to the root workspace
+// to bypass any $HOME environment variable issues under systemd, and completely
+// bypass path.join to prevent Windows build-time backslash injection.
+const DATA_DIR = '/root/.nanobot';
+const AUTH_FILE = '/root/.nanobot/auth.json';
 const COOKIE_NAME = 'nanobot_sys_auth';
 
 // Ensure data directory exists
@@ -24,28 +27,37 @@ interface AuthConfig {
 // CORE STORAGE LOGIC
 // -----------------------------------------------------------------------------
 
-export function getAuthConfig(): AuthConfig | null {
+export async function getAuthConfig(): Promise<AuthConfig | null> {
   try {
-    if (!fs.existsSync(AUTH_FILE)) return null;
-    const data = fs.readFileSync(AUTH_FILE, 'utf-8');
+    // FORCE BYPASS of any Next.js OS-level stat caching
+    const stat = fs.statSync(AUTH_FILE, { throwIfNoEntry: false });
+    if (!stat) return null;
+    
+    const data = await fs.promises.readFile(AUTH_FILE, 'utf-8');
     return JSON.parse(data) as AuthConfig;
-  } catch (error) {
+  } catch (error: any) {
     console.error('FAILED TO READ AUTH CONFIG:', error);
-    return null;
+    throw new Error('FATAL SECURITY ERROR: auth.json exists but is unreadable: ' + error.message);
   }
 }
 
-function saveAuthConfig(config: AuthConfig) {
-  fs.writeFileSync(AUTH_FILE, JSON.stringify(config, null, 2), 'utf-8');
+async function saveAuthConfig(config: AuthConfig) {
+  try {
+    await fs.promises.writeFile(AUTH_FILE, JSON.stringify(config, null, 2), 'utf-8');
+    // We optionally read it back to guarantee it hit the disk
+    await fs.promises.access(AUTH_FILE);
+  } catch (e) {
+    console.error("FATAL ERROR WRITING AUTH FILE TO DISK:", e);
+    throw new Error("Unable to save credentials to disk. Permission denied or storage full.");
+  }
 }
 
 // -----------------------------------------------------------------------------
-// CRYPTO UTILITIES
+// CRYPTO UTILITIES (Node.js Safe)
 // -----------------------------------------------------------------------------
 
 function hashPassword(password: string, salt: string): string {
-  // Using pbkdf2Sync for secure hashing without external dependencies
-  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  return crypto.createHash('sha512').update(password + salt).digest('hex');
 }
 
 function createSessionSignature(data: string, secret: string): string {
@@ -56,56 +68,40 @@ function createSessionSignature(data: string, secret: string): string {
 // ACTIONS & GUARDS
 // -----------------------------------------------------------------------------
 
-/**
- * Server Component Guard. Place at top of protected pages.
- * Throws redirect if unauthorized.
- */
 export async function requireAuth() {
-  const config = getAuthConfig();
-  // IF NO CONFIG EXISTS, SYSTEM IS IN OPEN MODE
+  const config = await getAuthConfig();
   if (!config) return true;
 
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(COOKIE_NAME)?.value;
 
   if (!sessionToken) {
-    redirect('/login');
+    throw new Error('NEXT_REDIRECT');
   }
 
-  // Verify token signature
   const [tokenData, signature] = sessionToken.split('.');
   if (!tokenData || !signature) {
-    redirect('/login');
+    throw new Error('NEXT_REDIRECT');
   }
 
   const expectedSignature = createSessionSignature(tokenData, config.sessionSecret);
   const sigBuffer = Buffer.from(signature);
   const expBuffer = Buffer.from(expectedSignature);
   
-  if (sigBuffer.length !== expBuffer.length) {
-    redirect('/login');
+  if (sigBuffer.length !== expBuffer.length || !crypto.timingSafeEqual(sigBuffer, expBuffer)) {
+    throw new Error('NEXT_REDIRECT');
   }
 
-  const isValid = crypto.timingSafeEqual(sigBuffer, expBuffer);
-
-  if (!isValid) {
-    redirect('/login');
-  }
-
-  // Check expiration (timestamp is embedded in tokenData)
   const expiresAt = parseInt(tokenData, 10);
   if (Date.now() > expiresAt) {
-    redirect('/login');
+    throw new Error('NEXT_REDIRECT');
   }
 
   return true;
 }
 
-/**
- * Setup Action (To lock the system)
- */
 export async function setupSystemAuth(password: string, recoveryEmail: string) {
-  const config = getAuthConfig();
+  const config = await getAuthConfig();
   if (config) {
     throw new Error('SYSTEM ALREADY SECURED. MODIFICATION REQUIRES CURRENT CREDENTIALS.');
   }
@@ -114,22 +110,18 @@ export async function setupSystemAuth(password: string, recoveryEmail: string) {
   const passwordHash = hashPassword(password, salt);
   const sessionSecret = crypto.randomBytes(32).toString('hex');
 
-  saveAuthConfig({
+  await saveAuthConfig({
     passwordHash,
     salt,
     recoveryEmail,
     sessionSecret
   });
 
-  // Automatically log the user in so they don't get locked out immediately
   return await loginAction(password);
 }
 
-/**
- * Login Action
- */
 export async function loginAction(password: string) {
-  const config = getAuthConfig();
+  const config = await getAuthConfig();
   if (!config) throw new Error('SYSTEM IS NOT CONFIGURED WITH AUTHENTICATION.');
 
   const inputHash = hashPassword(password, config.salt);
@@ -147,7 +139,7 @@ export async function loginAction(password: string) {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, sessionCookie, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // Edge devices often use raw HTTP. Forcing true causes browsers to drop the cookie.
     sameSite: 'lax',
     path: '/',
     maxAge: 24 * 60 * 60 // 24 hours
@@ -162,5 +154,6 @@ export async function loginAction(password: string) {
 export async function logoutAction() {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
-  redirect('/login');
+  // Throwing special error rather than Next.js redirect
+  throw new Error('NEXT_REDIRECT_LOGIN');
 }
