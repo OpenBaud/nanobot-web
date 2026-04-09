@@ -16,6 +16,7 @@ export default function ChannelsPage() {
   const [authChannel, setAuthChannel] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [authUrl, setAuthUrl] = useState<string | null>(null);
+  const [authType, setAuthType] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Channels that are known to use interactive login flows
@@ -125,6 +126,7 @@ export default function ChannelsPage() {
   const closeAuthModal = () => {
       setAuthChannel(null);
       setAuthUrl(null);
+      setAuthType(null);
       setAuthError(null);
   };
 
