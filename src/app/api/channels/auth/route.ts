@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import WebSocket from 'ws';
 
 // Store ongoing auth processes to clean them up if needed
@@ -10,16 +10,30 @@ export async function POST(req: Request): Promise<NextResponse> {
     const { channel } = await req.json();
     if (!channel) return NextResponse.json({ error: 'Channel name required' }, { status: 400 });
 
+    // Use a dynamic reference to prevent build-time static evaluation of process.platform
+    const isWindows = typeof process !== 'undefined' && process.env.OS === 'Windows_NT';
+
     // Prevent multiple auth requests for the same channel
     if (authProcesses[channel]) {
         try { authProcesses[channel].kill(); } catch (e) {}
     }
 
+    // Attempt to free port 3001 if WhatsApp bridge is stuck
+    if (channel === 'whatsapp') {
+      try {
+        if (isWindows) {
+          // Find PID listening on 3001 on Windows
+          execSync(`for /f "tokens=5" %a in ('netstat -aon ^| findstr :3001 ^| findstr LISTENING') do taskkill /F /PID %a 2>nul`);
+        } else {
+          execSync('fuser -k 3001/tcp > /dev/null 2>&1');
+        }
+      } catch (e) {
+        // Ignore kill errors
+      }
+    }
+
     return new Promise<NextResponse>((resolve) => {
         let urlFound = false;
-        
-        // Use a dynamic reference to prevent build-time static evaluation of process.platform
-        const isWindows = typeof process !== 'undefined' && process.env.OS === 'Windows_NT';
         
         const child = isWindows 
             ? spawn('cmd.exe', ['/c', 'nanobot', 'channels', 'login', channel, '-f'])
@@ -32,13 +46,14 @@ export async function POST(req: Request): Promise<NextResponse> {
              delete authProcesses[channel];
         });
 
-        // Set a timeout of 15 seconds. If no URL is emitted, return error.
+        // Set a timeout of 45 seconds for WhatsApp (compilation/connection takes time), 15s for others
+        const timeoutMs = channel === 'whatsapp' ? 45000 : 15000;
         const timeoutId = setTimeout(() => {
             if (!urlFound) {
                 child.kill();
-                resolve(NextResponse.json({ error: 'Timeout waiting for QR URL' }, { status: 504 }));
+                resolve(NextResponse.json({ error: `Timeout waiting for QR URL (${timeoutMs/1000}s)` }, { status: 504 }));
             }
-        }, 15000);
+        }, timeoutMs);
 
         child.on('error', (err: any) => {
             if (!urlFound) {
@@ -68,15 +83,15 @@ export async function POST(req: Request): Promise<NextResponse> {
                 });
 
                 ws.on('error', () => {
-                    if (retries < 10) {
+                    if (retries < 40) { // retry up to 40 seconds
                         retries++;
                         setTimeout(connectWs, 1000);
                     }
                 });
             };
 
-            // Wait 1 second for the bridge to start, then try connecting
-            setTimeout(connectWs, 1000);
+            // Wait 2 seconds for the bridge to start, then try connecting
+            setTimeout(connectWs, 2000);
         } else {
             const handleOutput = (data: Buffer) => {
                 if (urlFound) return; // Ignore output after we've sent the response

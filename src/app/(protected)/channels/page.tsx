@@ -99,6 +99,7 @@ export default function ChannelsPage() {
     setAuthChannel(channelName);
     setAuthLoading(true);
     setAuthUrl(null);
+    setAuthType(null);
     setAuthError(null);
 
     try {
@@ -111,6 +112,7 @@ export default function ChannelsPage() {
         
         if (res.ok && data.url) {
             setAuthUrl(data.url);
+            setAuthType(data.type || 'url');
         } else {
             setAuthError(data.error || "Failed to retrieve authentication URL.");
         }
@@ -173,17 +175,19 @@ export default function ChannelsPage() {
                                 level="M"
                             />
                         </div>
-                        <div className="w-full text-left">
-                            <label className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase block mb-2">Direct Link Fallback</label>
-                            <a 
-                              href={authUrl} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="block w-full bg-transparent border-b border-foreground pb-2 focus:border-foreground outline-none font-mono text-xs transition-colors text-foreground overflow-hidden text-ellipsis whitespace-nowrap hover:text-primary"
-                            >
-                                {authUrl}
-                            </a>
-                        </div>
+                        {authType !== 'raw' && (
+                            <div className="w-full text-left">
+                                <label className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase block mb-2">Direct Link Fallback</label>
+                                <a 
+                                  href={authUrl} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="block w-full bg-transparent border-b border-foreground pb-2 focus:border-foreground outline-none font-mono text-xs transition-colors text-foreground overflow-hidden text-ellipsis whitespace-nowrap hover:text-primary"
+                                >
+                                    {authUrl}
+                                </a>
+                            </div>
+                        )}
                         <p className="text-[10px] md:text-xs text-muted-foreground mt-4 leading-relaxed max-w-md">
                             Once scanned successfully on your device, you can close this window. The backend agent will preserve the session state. Ensure to restart the Gateway.
                         </p>
